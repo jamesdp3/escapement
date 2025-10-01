@@ -1,12 +1,41 @@
 // Available timezones - loaded from external file
 let AVAILABLE_TIMEZONES = [];
+let showSeconds = true; // Default to showing seconds
+
+// Load seconds preference from localStorage
+function loadSecondsPreference() {
+  const saved = localStorage.getItem('showSeconds');
+  return saved !== null ? JSON.parse(saved) : true;
+}
+
+// Save seconds preference to localStorage
+function saveSecondsPreference(show) {
+  localStorage.setItem('showSeconds', JSON.stringify(show));
+}
 
 // Load timezones from external JSON file
 async function loadTimezones() {
+  console.log('Starting to load timezones...');
   try {
     const response = await fetch('./timezones.json');
+    console.log('Fetch response:', response.status, response.ok);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
     const data = await response.json();
-    AVAILABLE_TIMEZONES = data.timezones;
+    console.log('JSON data loaded, length:', data.length);
+    
+    // Map the JSON structure to match expected format
+    AVAILABLE_TIMEZONES = data.map(city => ({
+      name: city.name,
+      zone: city.timezone,
+      country: city.country,
+      population: city.population
+    }));
+    
+    console.log('AVAILABLE_TIMEZONES populated with', AVAILABLE_TIMEZONES.length, 'items');
   } catch (error) {
     console.error('Failed to load timezones:', error);
     // Fallback to a minimal set if loading fails
@@ -18,6 +47,7 @@ async function loadTimezones() {
       { name: "Tokyo", zone: "Asia/Tokyo" },
       { name: "Sydney", zone: "Australia/Sydney" }
     ];
+    console.log('Using fallback timezones:', AVAILABLE_TIMEZONES.length, 'items');
   }
 }
 
@@ -86,11 +116,7 @@ function createClockCard({ city, zone }, index) {
   const digitalTime = document.createElement("div");
   digitalTime.className = "digital-time";
 
-  const sub = document.createElement("div");
-  sub.className = "sub";
-  sub.textContent = zone;
-
-  card.append(dial, label, digitalTime, sub);
+  card.append(dial, label, digitalTime);
 
   // updater
   let fmt = new Intl.DateTimeFormat("en-GB", {
@@ -109,6 +135,13 @@ function createClockCard({ city, zone }, index) {
     hour12: false
   });
 
+  let digitalFmtNoSeconds = new Intl.DateTimeFormat("en-GB", {
+    timeZone: zone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  });
+
   function update() {
     const parts = fmt.formatToParts(new Date());
     const get = k => Number(parts.find(p => p.type === k).value);
@@ -123,10 +156,16 @@ function createClockCard({ city, zone }, index) {
 
     hour.style.transform   = `translate(-50%, -100%) rotate(${hAngle}deg)`;
     minute.style.transform = `translate(-50%, -100%) rotate(${mAngle}deg)`;
-    second.style.transform = `translate(-50%, -100%) rotate(${sAngle}deg)`;
-
-    // Update digital time display
-    digitalTime.textContent = digitalFmt.format(new Date());
+    
+    // Show/hide second hand based on global setting
+    if (showSeconds) {
+      second.style.transform = `translate(-50%, -100%) rotate(${sAngle}deg)`;
+      second.style.display = 'block';
+      digitalTime.textContent = digitalFmt.format(new Date());
+    } else {
+      second.style.display = 'none';
+      digitalTime.textContent = digitalFmtNoSeconds.format(new Date());
+    }
   }
 
   update();
@@ -146,6 +185,12 @@ function initializeTimezoneControls() {
   const clockSelector = document.getElementById('clockSelector');
   const timezoneSearch = document.getElementById('timezoneSearch');
   const timezoneDropdown = document.getElementById('timezoneDropdown');
+  
+  // Ensure AVAILABLE_TIMEZONES is properly initialized
+  if (!Array.isArray(AVAILABLE_TIMEZONES) || AVAILABLE_TIMEZONES.length === 0) {
+    console.error('AVAILABLE_TIMEZONES is not properly initialized:', AVAILABLE_TIMEZONES);
+    return;
+  }
   
   let filteredTimezones = [...AVAILABLE_TIMEZONES];
   let selectedIndex = -1;
@@ -299,6 +344,31 @@ function initializeTimezoneControls() {
 
 // Initialize the application
 async function initializeApp() {
+  // Load seconds preference
+  showSeconds = loadSecondsPreference();
+  
+  // Set checkbox state
+  const showSecondsCheckbox = document.getElementById('showSeconds');
+  showSecondsCheckbox.checked = showSeconds;
+  
+  // Add event listener for seconds toggle
+  showSecondsCheckbox.addEventListener('change', (e) => {
+    showSeconds = e.target.checked;
+    saveSecondsPreference(showSeconds);
+    
+    // Update all existing clocks
+    cards.forEach(card => {
+      const secondHand = card.querySelector('.hand.second');
+      const digitalTime = card.querySelector('.digital-time');
+      
+      if (showSeconds) {
+        secondHand.style.display = 'block';
+      } else {
+        secondHand.style.display = 'none';
+      }
+    });
+  });
+  
   // Load timezones first
   await loadTimezones();
   
