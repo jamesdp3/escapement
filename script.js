@@ -88,17 +88,7 @@ function createClockCard({ city, zone }, index) {
 
   dial.append(hour, minute, second, dot);
 
-  // Create dropdown for timezone selection
-  const dropdown = document.createElement("select");
-  dropdown.className = "timezone-dropdown";
-  
-  AVAILABLE_TIMEZONES.forEach(tz => {
-    const option = document.createElement("option");
-    option.value = tz.zone;
-    option.textContent = tz.name;
-    option.selected = tz.zone === zone;
-    dropdown.appendChild(option);
-  });
+
 
   const label = document.createElement("div");
   label.className = "label";
@@ -111,7 +101,7 @@ function createClockCard({ city, zone }, index) {
   sub.className = "sub";
   sub.textContent = zone;
 
-  card.append(dropdown, dial, label, digitalTime, sub);
+  card.append(dial, label, digitalTime, sub);
 
   // updater
   let fmt = new Intl.DateTimeFormat("en-GB", {
@@ -128,42 +118,6 @@ function createClockCard({ city, zone }, index) {
     minute: "2-digit",
     second: "2-digit",
     hour12: false
-  });
-
-  // Handle timezone change
-  dropdown.addEventListener('change', (e) => {
-    const newZone = e.target.value;
-    const selectedTz = AVAILABLE_TIMEZONES.find(tz => tz.zone === newZone);
-    
-    // Update the zone data
-    ZONES[index] = { city: selectedTz.name, zone: newZone };
-    
-    // Save to localStorage
-    saveZones(ZONES);
-    
-    // Update the label and sub text
-    label.textContent = selectedTz.name;
-    sub.textContent = newZone;
-    
-    // Update the formatters
-    fmt = new Intl.DateTimeFormat("en-GB", {
-      timeZone: newZone,
-      hour: "numeric",
-      minute: "numeric",
-      second: "numeric",
-      hour12: false
-    });
-
-    digitalFmt = new Intl.DateTimeFormat("en-GB", {
-      timeZone: newZone,
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: false
-    });
-    
-    // Immediately update the display
-    update();
   });
 
   function update() {
@@ -195,8 +149,73 @@ function createClockCard({ city, zone }, index) {
 }
 
 // Render all clocks
-const cards = ZONES.map((zone, index) => createClockCard(zone, index));
+let cards = ZONES.map((zone, index) => createClockCard(zone, index));
 cards.forEach(c => grid.appendChild(c));
+
+// Initialize timezone controls
+function initializeTimezoneControls() {
+  const clockSelector = document.getElementById('clockSelector');
+  const timezoneSelector = document.getElementById('timezoneSelector');
+  
+  // Populate timezone dropdown
+  AVAILABLE_TIMEZONES.forEach(tz => {
+    const option = document.createElement('option');
+    option.value = tz.zone;
+    option.textContent = tz.name;
+    timezoneSelector.appendChild(option);
+  });
+  
+  // Update timezone selector when clock is selected
+  function updateTimezoneSelector() {
+    const selectedClockIndex = parseInt(clockSelector.value);
+    const currentZone = ZONES[selectedClockIndex].zone;
+    timezoneSelector.value = currentZone;
+  }
+  
+  // Handle clock selection change
+  clockSelector.addEventListener('change', updateTimezoneSelector);
+  
+  // Handle timezone change
+  timezoneSelector.addEventListener('change', function() {
+    const selectedClockIndex = parseInt(clockSelector.value);
+    const newTimezone = timezoneSelector.value;
+    const newTimezoneData = AVAILABLE_TIMEZONES.find(tz => tz.zone === newTimezone);
+    
+    if (newTimezoneData) {
+      // Update the ZONES array
+      ZONES[selectedClockIndex] = {
+        city: newTimezoneData.name,
+        zone: newTimezoneData.zone
+      };
+      
+      // Save to localStorage
+      saveZones(ZONES);
+      
+      // Remove old clock card
+      const oldCard = cards[selectedClockIndex];
+      if (oldCard.cleanup) oldCard.cleanup();
+      grid.removeChild(oldCard);
+      
+      // Create and insert new clock card
+      const newCard = createClockCard(ZONES[selectedClockIndex], selectedClockIndex);
+      cards[selectedClockIndex] = newCard;
+      
+      // Insert at correct position
+      const nextSibling = grid.children[selectedClockIndex];
+      if (nextSibling) {
+        grid.insertBefore(newCard, nextSibling);
+      } else {
+        grid.appendChild(newCard);
+      }
+    }
+  });
+  
+  // Initialize with first clock selected
+  updateTimezoneSelector();
+}
+
+// Initialize controls after DOM is ready
+initializeTimezoneControls();
 
 // Cleanup on unload
 window.addEventListener("beforeunload", () => cards.forEach(c => c.cleanup?.()));
