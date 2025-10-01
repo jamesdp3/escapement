@@ -1,7 +1,23 @@
 {
   "manifest_version": 3,
-  "name": "Six Black & White World Clocks",
+  "name": "Escapement",
   "version": "1.0.0",
-  "description": "New tab page with six analogue world clocks in black and white.",
-  "chrome_url_overrides": { "newtab": "newtab.html" }
+  "description": "Minimal, monochrome new tab page with six analogue world clocks.",
+  "chrome_url_overrides": {
+    "newtab": "newtab.html"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "six-world-clocks@escapement.extension",
+      "strict_min_version": "109.0"
+    }
+  },
+  "permissions": [],
+  "author": "James Peter",
+  "homepage_url": "https://github.com/jamesdp3/escapement",
+  "icons": {
+    "48": "icons/minimal-icon-48.png",
+    "96": "icons/minimal-icon-96.png",
+    "128": "icons/minimal-icon-128.png"
+  }
 }
