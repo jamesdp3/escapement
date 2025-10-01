@@ -16,9 +16,12 @@
       <option value="4">Clock 5</option>
       <option value="5">Clock 6</option>
     </select>
-    <select id="timezoneSelector">
-      <!-- Options will be populated by JavaScript -->
-    </select>
+    <div class="search-container">
+      <input type="text" id="timezoneSearch" placeholder="Search cities..." autocomplete="off">
+      <div id="timezoneDropdown" class="search-dropdown">
+        <!-- Filtered options will be populated by JavaScript -->
+      </div>
+    </div>
   </div>
   <main id="grid">
     <!-- Clocks will be injected here -->

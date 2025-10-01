@@ -1,36 +1,25 @@
-// Available timezones for dropdown selection
-const AVAILABLE_TIMEZONES = [
-  { name: "UTC", zone: "UTC" },
-  { name: "London", zone: "Europe/London" },
-  { name: "Paris", zone: "Europe/Paris" },
-  { name: "Berlin", zone: "Europe/Berlin" },
-  { name: "Rome", zone: "Europe/Rome" },
-  { name: "Moscow", zone: "Europe/Moscow" },
-  { name: "New York", zone: "America/New_York" },
-  { name: "Los Angeles", zone: "America/Los_Angeles" },
-  { name: "Chicago", zone: "America/Chicago" },
-  { name: "Denver", zone: "America/Denver" },
-  { name: "Toronto", zone: "America/Toronto" },
-  { name: "Mexico City", zone: "America/Mexico_City" },
-  { name: "São Paulo", zone: "America/Sao_Paulo" },
-  { name: "Buenos Aires", zone: "America/Argentina/Buenos_Aires" },
-  { name: "Tokyo", zone: "Asia/Tokyo" },
-  { name: "Shanghai", zone: "Asia/Shanghai" },
-  { name: "Hong Kong", zone: "Asia/Hong_Kong" },
-  { name: "Singapore", zone: "Asia/Singapore" },
-  { name: "Mumbai", zone: "Asia/Kolkata" },
-  { name: "Dubai", zone: "Asia/Dubai" },
-  { name: "Seoul", zone: "Asia/Seoul" },
-  { name: "Bangkok", zone: "Asia/Bangkok" },
-  { name: "Sydney", zone: "Australia/Sydney" },
-  { name: "Melbourne", zone: "Australia/Melbourne" },
-  { name: "Perth", zone: "Australia/Perth" },
-  { name: "Auckland", zone: "Pacific/Auckland" },
-  { name: "Honolulu", zone: "Pacific/Honolulu" },
-  { name: "Cairo", zone: "Africa/Cairo" },
-  { name: "Lagos", zone: "Africa/Lagos" },
-  { name: "Johannesburg", zone: "Africa/Johannesburg" }
-];
+// Available timezones - loaded from external file
+let AVAILABLE_TIMEZONES = [];
+
+// Load timezones from external JSON file
+async function loadTimezones() {
+  try {
+    const response = await fetch('./timezones.json');
+    const data = await response.json();
+    AVAILABLE_TIMEZONES = data.timezones;
+  } catch (error) {
+    console.error('Failed to load timezones:', error);
+    // Fallback to a minimal set if loading fails
+    AVAILABLE_TIMEZONES = [
+      { name: "UTC", zone: "UTC" },
+      { name: "London", zone: "Europe/London" },
+      { name: "New York", zone: "America/New_York" },
+      { name: "Paris", zone: "Europe/Paris" },
+      { name: "Tokyo", zone: "Asia/Tokyo" },
+      { name: "Sydney", zone: "Australia/Sydney" }
+    ];
+  }
+}
 
 // Default configuration for six clocks
 const DEFAULT_ZONES = [
@@ -155,67 +144,170 @@ cards.forEach(c => grid.appendChild(c));
 // Initialize timezone controls
 function initializeTimezoneControls() {
   const clockSelector = document.getElementById('clockSelector');
-  const timezoneSelector = document.getElementById('timezoneSelector');
+  const timezoneSearch = document.getElementById('timezoneSearch');
+  const timezoneDropdown = document.getElementById('timezoneDropdown');
   
-  // Populate timezone dropdown
-  AVAILABLE_TIMEZONES.forEach(tz => {
-    const option = document.createElement('option');
-    option.value = tz.zone;
-    option.textContent = tz.name;
-    timezoneSelector.appendChild(option);
-  });
+  let filteredTimezones = [...AVAILABLE_TIMEZONES];
+  let selectedIndex = -1;
+  let currentSelectedClockIndex = 0;
   
-  // Update timezone selector when clock is selected
-  function updateTimezoneSelector() {
-    const selectedClockIndex = parseInt(clockSelector.value);
-    const currentZone = ZONES[selectedClockIndex].zone;
-    timezoneSelector.value = currentZone;
+  // Update search input when clock is selected
+  function updateSearchInput() {
+    currentSelectedClockIndex = parseInt(clockSelector.value);
+    const currentZone = ZONES[currentSelectedClockIndex].zone;
+    const currentTimezone = AVAILABLE_TIMEZONES.find(tz => tz.zone === currentZone);
+    timezoneSearch.value = currentTimezone ? currentTimezone.name : '';
+    hideDropdown();
   }
   
-  // Handle clock selection change
-  clockSelector.addEventListener('change', updateTimezoneSelector);
+  // Filter timezones based on search input
+  function filterTimezones(searchTerm) {
+    if (!searchTerm.trim()) {
+      filteredTimezones = [...AVAILABLE_TIMEZONES];
+    } else {
+      const term = searchTerm.toLowerCase();
+      filteredTimezones = AVAILABLE_TIMEZONES.filter(tz => 
+        tz.name.toLowerCase().includes(term)
+      );
+    }
+    selectedIndex = -1;
+    renderDropdown();
+  }
   
-  // Handle timezone change
-  timezoneSelector.addEventListener('change', function() {
-    const selectedClockIndex = parseInt(clockSelector.value);
-    const newTimezone = timezoneSelector.value;
-    const newTimezoneData = AVAILABLE_TIMEZONES.find(tz => tz.zone === newTimezone);
+  // Render dropdown items
+  function renderDropdown() {
+    timezoneDropdown.innerHTML = '';
     
-    if (newTimezoneData) {
-      // Update the ZONES array
-      ZONES[selectedClockIndex] = {
-        city: newTimezoneData.name,
-        zone: newTimezoneData.zone
-      };
-      
-      // Save to localStorage
-      saveZones(ZONES);
-      
-      // Remove old clock card
-      const oldCard = cards[selectedClockIndex];
-      if (oldCard.cleanup) oldCard.cleanup();
-      grid.removeChild(oldCard);
-      
-      // Create and insert new clock card
-      const newCard = createClockCard(ZONES[selectedClockIndex], selectedClockIndex);
-      cards[selectedClockIndex] = newCard;
-      
-      // Insert at correct position
-      const nextSibling = grid.children[selectedClockIndex];
-      if (nextSibling) {
-        grid.insertBefore(newCard, nextSibling);
-      } else {
-        grid.appendChild(newCard);
-      }
+    if (filteredTimezones.length === 0) {
+      const noResults = document.createElement('div');
+      noResults.className = 'no-results';
+      noResults.textContent = 'No cities found';
+      timezoneDropdown.appendChild(noResults);
+    } else {
+      filteredTimezones.forEach((tz, index) => {
+        const item = document.createElement('div');
+        item.className = 'dropdown-item';
+        if (index === selectedIndex) {
+          item.classList.add('highlighted');
+        }
+        item.textContent = tz.name;
+        item.dataset.zone = tz.zone;
+        item.dataset.index = index;
+        
+        item.addEventListener('click', () => selectTimezone(tz));
+        timezoneDropdown.appendChild(item);
+      });
+    }
+  }
+  
+  // Show dropdown
+  function showDropdown() {
+    timezoneDropdown.classList.add('show');
+  }
+  
+  // Hide dropdown
+  function hideDropdown() {
+    timezoneDropdown.classList.remove('show');
+    selectedIndex = -1;
+  }
+  
+  // Select a timezone
+  function selectTimezone(timezone) {
+    timezoneSearch.value = timezone.name;
+    hideDropdown();
+    
+    // Update the ZONES array
+    ZONES[currentSelectedClockIndex] = {
+      city: timezone.name,
+      zone: timezone.zone
+    };
+    
+    // Save to localStorage
+    saveZones(ZONES);
+    
+    // Remove old clock card
+    const oldCard = cards[currentSelectedClockIndex];
+    if (oldCard.cleanup) oldCard.cleanup();
+    grid.removeChild(oldCard);
+    
+    // Create and insert new clock card
+    const newCard = createClockCard(ZONES[currentSelectedClockIndex], currentSelectedClockIndex);
+    cards[currentSelectedClockIndex] = newCard;
+    
+    // Insert at correct position
+    const nextSibling = grid.children[currentSelectedClockIndex];
+    if (nextSibling) {
+      grid.insertBefore(newCard, nextSibling);
+    } else {
+      grid.appendChild(newCard);
+    }
+  }
+  
+  // Handle keyboard navigation
+  function handleKeyNavigation(e) {
+    if (!timezoneDropdown.classList.contains('show')) return;
+    
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        selectedIndex = Math.min(selectedIndex + 1, filteredTimezones.length - 1);
+        renderDropdown();
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        selectedIndex = Math.max(selectedIndex - 1, -1);
+        renderDropdown();
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (selectedIndex >= 0 && filteredTimezones[selectedIndex]) {
+          selectTimezone(filteredTimezones[selectedIndex]);
+        }
+        break;
+      case 'Escape':
+        hideDropdown();
+        timezoneSearch.blur();
+        break;
+    }
+  }
+  
+  // Event listeners
+  clockSelector.addEventListener('change', updateSearchInput);
+  
+  timezoneSearch.addEventListener('input', (e) => {
+    filterTimezones(e.target.value);
+    showDropdown();
+  });
+  
+  timezoneSearch.addEventListener('focus', () => {
+    filterTimezones(timezoneSearch.value);
+    showDropdown();
+  });
+  
+  timezoneSearch.addEventListener('keydown', handleKeyNavigation);
+  
+  // Hide dropdown when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.search-container')) {
+      hideDropdown();
     }
   });
   
   // Initialize with first clock selected
-  updateTimezoneSelector();
+  updateSearchInput();
 }
 
-// Initialize controls after DOM is ready
-initializeTimezoneControls();
+// Initialize the application
+async function initializeApp() {
+  // Load timezones first
+  await loadTimezones();
+  
+  // Initialize controls after timezones are loaded
+  initializeTimezoneControls();
+}
+
+// Start the application
+initializeApp();
 
 // Cleanup on unload
 window.addEventListener("beforeunload", () => cards.forEach(c => c.cleanup?.()));

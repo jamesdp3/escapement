@@ -55,6 +55,82 @@ body {
   color: var(--fg);
 }
 
+/* Search container styling */
+.search-container {
+  position: relative;
+}
+
+#timezoneSearch {
+  background: rgba(0, 0, 0, 0.8);
+  color: var(--fg);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  width: 200px;
+}
+
+#timezoneSearch:hover {
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+#timezoneSearch:focus {
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+#timezoneSearch::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.search-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 1001;
+  display: none;
+}
+
+.search-dropdown.show {
+  display: block;
+}
+
+.dropdown-item {
+  padding: 8px 12px;
+  color: var(--fg);
+  cursor: pointer;
+  font-size: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.dropdown-item:hover,
+.dropdown-item.highlighted {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.dropdown-item.highlighted {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.no-results {
+  padding: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  font-style: italic;
+  text-align: center;
+}
+
 #grid {
   max-width: 1200px;
   padding: 32px 20px;
